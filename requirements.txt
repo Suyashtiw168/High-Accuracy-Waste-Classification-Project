@@ -1,4 +1,6 @@
 streamlit
-tensorflow==2.15.0
-numpy
+tensorflow
+keras
 pillow
+numpy
+gdown
