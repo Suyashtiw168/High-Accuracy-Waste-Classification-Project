@@ -1,19 +1,20 @@
 import streamlit as st
 import numpy as np
-import requests, os
+import os
 from tensorflow import keras
 from PIL import Image
-import matplotlib.pyplot as plt
+import pandas as pd
+import gdown
 
-# Google Drive से मॉडल डाउनलोड करो (अगर local में नहीं है)
-MODEL_URL = "https://drive.google.com/uc?id=1zh2_UNG3I2etVkzle3_EvrBJ2UGS3if5"
-MODEL_PATH = "waste_model.keras"
+# Google Drive model file ID
+MODEL_ID = "1zh2_UNG3I2etVkzle3_EvrBJ2UGS3if5"  # इसे अपने .h5 फाइल का ID डालना
+MODEL_PATH = "waste_model.h5"
 
+# Model download (अगर local में नहीं है तो)
 if not os.path.exists(MODEL_PATH):
-    r = requests.get(MODEL_URL, allow_redirects=True)
-    open(MODEL_PATH, 'wb').write(r.content)
+    gdown.download(f"https://drive.google.com/uc?id={MODEL_ID}", MODEL_PATH, quiet=False)
 
-# मॉडल load करो
+# Load model
 model = keras.models.load_model(MODEL_PATH)
 
 # Labels (confirmed order)
@@ -22,6 +23,7 @@ labels = ["cardboard", "glass", "metal", "paper", "plastic", "trash"]
 st.title("Waste Classification App")
 st.write("Upload an image and the model will classify it into one of 6 categories.")
 
+# File uploader
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
@@ -36,18 +38,17 @@ if uploaded_file is not None:
     # Prediction
     preds = model.predict(arr)[0]
 
-    # Top-3 predictions निकालो
+    # Top-3 predictions
     top_indices = preds.argsort()[-3:][::-1]
     st.subheader("Top Predictions:")
     for i in top_indices:
         st.write(f"{labels[i]} — {preds[i]*100:.2f}%")
 
-    # Probability distribution graph
+    # Probability distribution (Streamlit chart)
     st.subheader("Probability distribution")
-    fig, ax = plt.subplots()
-    ax.bar(labels, preds, color="skyblue")
-    plt.xticks(rotation=45)
-    st.pyplot(fig)
+    chart_data = pd.DataFrame({"Class": labels, "Probability": preds})
+    st.bar_chart(chart_data.set_index("Class"))
+
 
 
 
