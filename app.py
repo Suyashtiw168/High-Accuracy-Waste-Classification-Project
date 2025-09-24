@@ -1,37 +1,44 @@
-# app.py
 import os
 import streamlit as st
 import numpy as np
 from PIL import Image
 from tensorflow import keras
 import pandas as pd
-import gdown, zipfile
+import gdown
+import zipfile
 
-# Google Drive file ID (zip file ka ID)
-MODEL_ID = "1zh2_UNG3I2etVkzle3_EvrBJ2UGS3if5"
+# === CONFIG ===
+MODEL_ID = "1RpYLaStWEegQPKOashQoSu1ZjAE24Bry"  # zip file ID
 ZIP_PATH = "waste_model.zip"
 MODEL_PATH = "waste_model.h5"
 
 labels = ["cardboard", "glass", "metal", "paper", "plastic", "trash"]
 
-# Download & extract model
+# === DOWNLOAD & EXTRACT ===
 if not os.path.exists(MODEL_PATH):
     st.info("Downloading model …")
     url = f"https://drive.google.com/uc?id={MODEL_ID}"
     gdown.download(url, ZIP_PATH, quiet=False)
-    with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
-        zip_ref.extractall(".")
 
-# Load model
+    try:
+        with zipfile.ZipFile(ZIP_PATH, 'r') as z:
+            z.extractall(".")
+    except zipfile.BadZipFile:
+        st.warning("The downloaded file is not a valid zip. Maybe it’s already the .h5 file.")
+        if os.path.exists(ZIP_PATH):
+            os.rename(ZIP_PATH, MODEL_PATH)
+
+# === LOAD MODEL ===
 model = keras.models.load_model(MODEL_PATH)
 
-# Streamlit UI
+# === UI ===
 st.title("Waste Classification App")
-uploaded = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+st.write("Upload an image to classify it into waste categories.")
 
+uploaded = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 if uploaded:
     img = Image.open(uploaded).convert("RGB")
-    st.image(img, caption="Uploaded", use_column_width=True)
+    st.image(img, caption="Uploaded Image", use_column_width=True)
 
     img_resized = img.resize((224, 224))
     arr = np.array(img_resized).astype("float32") / 255.0
@@ -39,17 +46,20 @@ if uploaded:
 
     preds_raw = model.predict(arr)[0]
 
-    # softmax
+    # Softmax
     exps = np.exp(preds_raw - np.max(preds_raw))
     probs = exps / exps.sum()
 
-    # show top-3
+    # Top-3
     top_idx = np.argsort(probs)[::-1][:3]
+    st.subheader("Top Predictions")
     for i in top_idx:
         st.write(f"{labels[i]} — {probs[i]*100:.2f}%")
 
     df = pd.DataFrame({"Class": labels, "Probability": probs})
+    st.subheader("Probability Distribution")
     st.bar_chart(df.set_index("Class"))
+
 
 
 
