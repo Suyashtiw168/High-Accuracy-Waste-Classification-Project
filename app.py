@@ -8,19 +8,16 @@ from PIL import Image
 from tensorflow import keras
 import gdown
 
-# CONFIG - use your zip file ID (you already gave this)
-MODEL_ID = "1RpYLaStWEegQPKOashQoSu1ZjAE24Bry"
+# CONFIG
+MODEL_ID = "1RpYLaStWEegQPKOashQoSu1ZjAE24Bry"   # Google Drive file ID
 ZIP_PATH = "waste_model.zip"
 MODEL_PATH = "waste_model.h5"
-
-# Change this threshold as needed (0.6 = 60% confident required)
-CONFIDENCE_THRESHOLD = 0.60
 
 labels = ["cardboard", "glass", "metal", "paper", "plastic", "trash"]
 
 # Download & extract (if not present)
 if not os.path.exists(MODEL_PATH):
-    st.info("Downloading model — please wait...")
+    st.info("Downloading model …")
     url = f"https://drive.google.com/uc?id={MODEL_ID}"
     try:
         gdown.download(url, ZIP_PATH, quiet=False)
@@ -72,33 +69,18 @@ img_resized = img.resize((224, 224))
 arr = np.asarray(img_resized).astype("float32") / 255.0
 arr = np.expand_dims(arr, axis=0)
 
-# Predict
-pred_raw = model.predict(arr)
-pred_raw = pred_raw.flatten()
+# Predict (single image, no steps, silent)
+pred_raw = model.predict(arr, verbose=0)
 probs = to_probs(pred_raw)
 
 top_idx = int(np.argmax(probs))
 top_label = labels[top_idx]
 top_prob = float(probs[top_idx])
 
-# If high enough confidence -> show single final prediction
-if top_prob >= CONFIDENCE_THRESHOLD:
-    st.subheader("Final prediction")
-    st.write(f"{top_label} — {top_prob*100:.2f}%")
-else:
-    # uncertain -> show user-friendly message + top-3 suggestions
-    st.subheader("Final prediction (uncertain)")
-    st.write(f"Model confidence is low ({top_prob*100:.2f}%). Showing suggestions:")
-    top_k = min(3, len(labels))
-    top_indices = np.argsort(probs)[::-1][:top_k]
-    for i in top_indices:
-        st.write(f"{labels[int(i)]} — {probs[int(i)]*100:.2f}%")
+# Final result only
+st.subheader("Final Prediction")
+st.write(f"{top_label} — {top_prob*100:.2f}%")
 
-# Collapseable debug: show all probs (can be hidden)
-with st.expander("Show full class probabilities"):
-    df = pd.DataFrame({"Class": labels, "Probability": probs})
-    df = df.sort_values("Probability", ascending=False).reset_index(drop=True)
-    st.table(df.style.format({"Probability":"{:.4f}"}))
 
 
 
