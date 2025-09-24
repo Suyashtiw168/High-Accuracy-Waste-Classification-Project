@@ -4,13 +4,13 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.resnet50 import preprocess_input
 
-# Load model
-model = load_model("model/best_resnet50.h5")
+# Load model (.keras format)
+model = load_model("high_accuracy_waste_classification_latest.keras")
 
-# Classes (adjust if needed)
+# Class labels (adjust if needed)
 class_labels = ["plastic", "metal", "cardboard", "trash", "paper", "glass"]
 
-st.title("🗑️ Waste Classification using ResNet50")
+st.title("🗑️ Waste Classification App (ResNet50)")
 
 uploaded_file = st.file_uploader("Upload an image", type=["jpg","jpeg","png"])
 
@@ -27,3 +27,4 @@ if uploaded_file is not None:
 
     st.image(img, caption="Uploaded Image", use_column_width=True)
     st.success(f"Prediction: {pred_label} ({confidence*100:.2f}% confidence)")
+
