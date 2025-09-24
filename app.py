@@ -1,30 +1,65 @@
-import streamlit as st
+import os
+import gdown
 import numpy as np
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.applications.resnet50 import preprocess_input
+from tensorflow import keras
+from PIL import Image
+import streamlit as st
 
-# Load model (.keras format)
-model = load_model("high_accuracy_waste_classification_latest.keras")
+# =====================
+# CONFIG
+# =====================
+MODEL_PATH = "model.keras"
+# Google Drive share link se file ID nikalo (tumhari link me ye hai: 1zh2_UNG3I2etVkzle3_EvrBJ2UGS3if5)
+DRIVE_URL = "https://drive.google.com/uc?id=1zh2_UNG3I2etVkzle3_EvrBJ2UGS3if5"
 
-# Class labels (adjust if needed)
-class_labels = ["plastic", "metal", "cardboard", "trash", "paper", "glass"]
+# =====================
+# MODEL LOADER
+# =====================
+@st.cache_resource
+def load_model():
+    if not os.path.exists(MODEL_PATH):
+        with st.spinner("Downloading model..."):
+            gdown.download(DRIVE_URL, MODEL_PATH, quiet=False)
+    model = keras.models.load_model(MODEL_PATH)
+    return model
 
-st.title("🗑️ Waste Classification App (ResNet50)")
+model = load_model()
 
-uploaded_file = st.file_uploader("Upload an image", type=["jpg","jpeg","png"])
+# =====================
+# PREDICTION FUNCTION
+# =====================
+def preprocess_image(image, target_size=(224, 224)):
+    img = image.resize(target_size)
+    arr = np.array(img) / 255.0
+    arr = np.expand_dims(arr, axis=0)
+    return arr
 
-if uploaded_file is not None:
-    img = image.load_img(uploaded_file, target_size=(224,224))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)
-    img_array = preprocess_input(img_array)
+def predict(img):
+    arr = preprocess_image(img)
+    preds = model.predict(arr)
+    return preds
 
-    prediction = model.predict(img_array, verbose=0)
-    pred_index = np.argmax(prediction)
-    pred_label = class_labels[pred_index]
-    confidence = float(np.max(prediction))
+# =====================
+# STREAMLIT APP
+# =====================
+def main():
+    st.title("♻️ Waste Classification App")
+    st.write("Upload an image to classify into waste categories.")
 
-    st.image(img, caption="Uploaded Image", use_column_width=True)
-    st.success(f"Prediction: {pred_label} ({confidence*100:.2f}% confidence)")
+    uploaded = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
+    if uploaded is not None:
+        img = Image.open(uploaded).convert("RGB")
+        st.image(img, caption="Uploaded Image", use_column_width=True)
+
+        preds = predict(img)
+        st.write("🔮 Raw Predictions:", preds)
+
+        # Agar tumhare model me class labels defined hain to unko add karo:
+        labels = ["cardboard", "glass", "metal", "paper", "plastic", "trash"]
+        predicted_class = labels[np.argmax(preds)]
+        st.success(f"✅ Predicted Class: **{predicted_class}**")
+
+if __name__ == "__main__":
+    main()
+
 
